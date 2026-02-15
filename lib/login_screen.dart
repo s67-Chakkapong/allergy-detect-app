@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import 'package:flutter/material.dart';
 
 class LoginScreen extends StatelessWidget {
@@ -240,3 +241,5 @@ class _InputBox extends StatelessWidget {
     );
   }
 }
+
+
