@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'register_screen.dart'; // อย่าลืม Import ไฟล์ที่เพิ่งสร้าง
+// นำเข้าไฟล์ Welcome Screen เพื่อใช้เป็นหน้าแรกสุด
+import 'welcome_screen.dart'; 
 
 void main() {
   runApp(const MyApp());
@@ -10,9 +11,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const RegisterScreen(), // เรียกใช้หน้า Register เป็นหน้าแรก
+      title: 'Allergy Detect App', 
+      // กำหนดให้เปิดแอปมาเจอหน้า WelcomeScreen เป็นหน้าแรก
+      home: WelcomeScreen(), 
     );
   }
 }
