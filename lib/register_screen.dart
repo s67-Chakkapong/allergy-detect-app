@@ -24,7 +24,7 @@ class RegisterScreen extends StatelessWidget {
               ), // ปรับให้โค้งมนขึ้นตามรูป
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1), // เงาจางๆ จะดูสวยกว่า
+                  color: Colors.black.withOpacity(0.3), // เงาจางๆ จะดูสวยกว่า
                   blurRadius: 25,
                   offset: const Offset(0, 10),
                 ),
