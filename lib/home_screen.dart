@@ -1,33 +1,77 @@
+import 'dart:ui'; // ต้อง import ตัวนี้เพื่อใช้ ImageFilter.blur
+import 'package:allergy_detect_app/login_screen.dart';
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  // ฟังก์ชันสำหรับเปิดหน้าต่าง Popup พร้อมเบลอพื้นหลัง
+  void _showNfcDetails(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.1), // สีของพื้นหลังที่บังอยู่
+      builder: (context) {
+        return BackdropFilter(
+          filter: ImageFilter.blur(
+            sigmaX: 5,
+            sigmaY: 5,
+          ), // ปรับค่าความเบลอที่นี่
+          child: AlertDialog(
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min, // ให้ขนาดพอดีกับเนื้อหา
+              children: [
+                const Text(
+                  "NFC Card Detail",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                ),
+                const SizedBox(height: 20),
+                const Icon(Icons.nfc, size: 80, color: Color(0xFF1B4332)),
+                const SizedBox(height: 20),
+                const Text("รายละเอียดข้อมูลภายใน Tag NFC..."),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ตั้งสีพื้นหลังครีมอ่อนๆ ตามดีไซน์
       backgroundColor: const Color(0xFFF9F8F6),
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeaderProfile(context), // ส่วนหัวโปรไฟล์
-            _buildNfcCard(), // ส่วนบัตร NFC
-            // ในอนาคตคุณสามารถเพิ่ม _buildMenu() ตรงนี้ได้ครับ
+            _buildHeaderProfile(context),
+            // หุ้มบัตร NFC ด้วย GestureDetector เพื่อให้กดได้
+            GestureDetector(
+              onTap: () => _showNfcDetails(context),
+              child: _buildNfcCard(),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // --- 1. ส่วน Header Profile ---
+  // --- Header Profile (เหมือนเดิม) ---
   Widget _buildHeaderProfile(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          // รูป Profile
           const CircleAvatar(
             radius: 25,
             backgroundColor: Colors.grey,
@@ -36,8 +80,6 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-
-          // ข้อมูลชื่อและคำทักทาย
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -52,37 +94,28 @@ class HomeScreen extends StatelessWidget {
                 ),
                 Text(
                   'Good Morning',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
             ),
           ),
-
-          // ปุ่มไอคอนแจ้งเตือน (Help)
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.help_outline, color: Colors.grey),
-          ),
-          // ปุ่ม Logout
+          const Icon(Icons.help_outline, color: Colors.grey),
+          const SizedBox(width: 10),
           IconButton(
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                MaterialPageRoute(builder: (context) => LoginScreen()),
               );
             },
-            icon: const Icon(Icons.logout, color: Colors.grey),
+            icon: Icon(Icons.logout, color: Colors.grey),
           ),
         ],
       ),
     );
   }
 
-  // --- 2. ส่วน NFC Card ---
+  // --- NFC Card (เหมือนเดิม) ---
   Widget _buildNfcCard() {
     return Container(
       width: double.infinity,
@@ -100,13 +133,10 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       child: Column(
-        children: [
-          // ไอคอน NFC
-          const Icon(Icons.nfc, size: 80, color: Color(0xFF1B4332)),
-          const SizedBox(height: 20),
-
-          // ข้อความภาษาไทย
-          const Text(
+        children: const [
+          Icon(Icons.nfc, size: 80, color: Color(0xFF1B4332)),
+          SizedBox(height: 20),
+          Text(
             'นำโทรศัพท์ของคุณไปสัมผัสกับ NFC Tag',
             textAlign: TextAlign.center,
             style: TextStyle(
@@ -115,10 +145,8 @@ class HomeScreen extends StatelessWidget {
               color: Color(0xFF1B4332),
             ),
           ),
-          const SizedBox(height: 8),
-
-          // ข้อความภาษาอังกฤษ
-          const Text(
+          SizedBox(height: 8),
+          Text(
             'Bring your phone close to the NFC tag.',
             textAlign: TextAlign.center,
             style: TextStyle(fontSize: 14, color: Colors.grey),
