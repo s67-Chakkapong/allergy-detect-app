@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'login_screen.dart'; // อย่าลืม Import ไฟล์ที่เพิ่งสร้าง
-
 // นำเข้าไฟล์ Welcome Screen เพื่อใช้เป็นหน้าแรกสุด
 import 'welcome_screen.dart';
 
