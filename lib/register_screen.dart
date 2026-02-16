@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'login_screen.dart';
 
 class RegisterScreen extends StatelessWidget {
   const RegisterScreen({super.key});
@@ -89,7 +90,7 @@ class RegisterScreen extends StatelessWidget {
                   _buildGoogleButton(),
 
                   const SizedBox(height: 30),
-                  _buildLoginLink(),
+                  _buildLoginLink(context),
                 ],
               ),
             ),
@@ -145,13 +146,19 @@ class RegisterScreen extends StatelessWidget {
   }
 
   // ลิงก์ไปหน้า Login
-  Widget _buildLoginLink() {
+  Widget _buildLoginLink(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Text("Already have an account? "),
+
         TextButton(
-          onPressed: () {},
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginScreen()),
+            );
+          },
           child: const Text(
             "Log in here!",
             style: TextStyle(

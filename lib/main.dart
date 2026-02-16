@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'register_screen.dart'; // อย่าลืม Import ไฟล์ที่เพิ่งสร้าง
 import 'login_screen.dart'; // อย่าลืม Import ไฟล์ที่เพิ่งสร้าง
 
 void main() {

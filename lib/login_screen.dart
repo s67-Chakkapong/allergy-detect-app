@@ -1,5 +1,5 @@
-<<<<<<< HEAD
 import 'package:flutter/material.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -18,7 +18,10 @@ class LoginScreen extends StatelessWidget {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 380),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 22,
+                ),
                 decoration: BoxDecoration(
                   color: cardBg,
                   borderRadius: BorderRadius.circular(18),
@@ -48,19 +51,13 @@ class LoginScreen extends StatelessWidget {
                     // Email
                     const _FieldLabel('Email'),
                     const SizedBox(height: 8),
-                    const _InputBox(
-                      hintText: '',
-                      obscureText: false,
-                    ),
+                    const _InputBox(hintText: '', obscureText: false),
                     const SizedBox(height: 14),
 
                     // Password
                     const _FieldLabel('Password'),
                     const SizedBox(height: 8),
-                    const _InputBox(
-                      hintText: '',
-                      obscureText: true,
-                    ),
+                    const _InputBox(hintText: '', obscureText: true),
 
                     const SizedBox(height: 10),
 
@@ -77,7 +74,10 @@ class LoginScreen extends StatelessWidget {
                         ),
                         child: const Text(
                           'Forget your password',
-                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
@@ -99,7 +99,10 @@ class LoginScreen extends StatelessWidget {
                         ),
                         child: const Text(
                           'Log in',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
@@ -164,10 +167,20 @@ class LoginScreen extends StatelessWidget {
                       children: [
                         const Text(
                           "Don't have an account? ",
-                          style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w500),
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w500,
+                          ),
                         ),
                         GestureDetector(
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const RegisterScreen(),
+                              ),
+                            );
+                          },
                           child: Text(
                             'Register here!',
                             style: TextStyle(
@@ -211,10 +224,7 @@ class _InputBox extends StatelessWidget {
   final String hintText;
   final bool obscureText;
 
-  const _InputBox({
-    required this.hintText,
-    required this.obscureText,
-  });
+  const _InputBox({required this.hintText, required this.obscureText});
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +234,10 @@ class _InputBox extends StatelessWidget {
         hintText: hintText,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -241,5 +254,3 @@ class _InputBox extends StatelessWidget {
     );
   }
 }
-
-
