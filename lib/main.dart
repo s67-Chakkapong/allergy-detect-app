@@ -16,9 +16,6 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       debugShowCheckedModeBanner: false,
-
-      home: const LoginScreen(), // เรียกใช้หน้า Login เป็นหน้าแรก
-
       title: 'Allergy Detect App',
       // กำหนดให้เปิดแอปมาเจอหน้า WelcomeScreen เป็นหน้าแรก
       home: WelcomeScreen(),

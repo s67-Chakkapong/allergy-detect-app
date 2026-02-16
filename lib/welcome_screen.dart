@@ -27,9 +27,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => const RegisterScreen(),
-      ),
+      MaterialPageRoute(builder: (context) => const RegisterScreen()),
     );
   }
 
@@ -65,13 +63,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
           child: Stack(
             children: [
-               const Center(
+              const Center(
                 child: Text(
                   'Welcome',
                   style: TextStyle(
                     fontSize: 52,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF2C5E3B), 
+                    color: Color(0xFF2C5E3B),
                     letterSpacing: 4.0,
                   ),
                 ),
@@ -84,7 +82,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     'Develop by 855',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Color(0xFF2C5E3B), 
+                      color: Color(0xFF2C5E3B),
                       letterSpacing: 2.0,
                     ),
                   ),
