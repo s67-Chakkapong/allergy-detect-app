@@ -18,8 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
-  static const primaryGreen = Color(0xFF1F5A3A);
-  static const cardBg = Color(0xFFF6F3EF);
+  // ปรับสีเขียวให้ตรงกับหน้า Register
+  static const primaryGreen = Color(0xFF1B4332);
 
   @override
   void dispose() {
@@ -119,7 +119,6 @@ class _LoginScreenState extends State<LoginScreen> {
       if (user != null) {
         final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
 
-        // Save to Firestore only if brand new user
         if (isNewUser) {
           await FirebaseFirestore.instance
               .collection('users')
@@ -152,7 +151,6 @@ class _LoginScreenState extends State<LoginScreen> {
   // Forgot Password
   // ─────────────────────────────────────────
   Future<void> _forgotPassword() async {
-    // Show dialog to enter email
     final emailController = TextEditingController(
       text: _emailController.text.trim(),
     );
@@ -235,209 +233,123 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   // ─────────────────────────────────────────
-  // Build
+  // Build (อัปเดต UI ให้เหมือน Register Screen)
   // ─────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFEFEF),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 380),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 22,
+      backgroundColor: Colors.white,
+      resizeToAvoidBottomInset: true,
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Container(
+            width: 340,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(255, 249, 248, 246),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.3),
+                  blurRadius: 25,
+                  offset: const Offset(0, 10),
                 ),
-                decoration: BoxDecoration(
-                  color: cardBg,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 16,
-                      offset: Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 6),
-
-                    // Title
-                    const Text(
-                      'Log in',
-                      textAlign: TextAlign.center,
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title
+                  const Center(
+                    child: Text(
+                      'Log In',
                       style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
                         color: primaryGreen,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(height: 22),
+                  ),
+                  const SizedBox(height: 30),
 
-                    // Email
-                    const _FieldLabel('Email'),
-                    const SizedBox(height: 8),
-                    _InputBox(
-                      controller: _emailController,
-                      hintText: 'Enter your email',
-                      obscureText: false,
-                    ),
-                    const SizedBox(height: 14),
+                  // Email field
+                  _buildLabel("Email"),
+                  _buildInputBox(
+                    controller: _emailController,
+                    hint: 'Enter your email',
+                    isPassword: false,
+                  ),
 
-                    // Password
-                    const _FieldLabel('Password'),
-                    const SizedBox(height: 8),
-                    _InputBox(
-                      controller: _passwordController,
-                      hintText: 'Enter your password',
-                      obscureText: true,
-                    ),
-                    const SizedBox(height: 10),
+                  const SizedBox(height: 15),
 
-                    // Forgot password
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: _forgotPassword,
-                        style: TextButton.styleFrom(
-                          foregroundColor: primaryGreen,
-                          padding: EdgeInsets.zero,
-                          minimumSize: const Size(10, 10),
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          'Forget your password',
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
+                  // Password field
+                  _buildLabel("Password"),
+                  _buildInputBox(
+                    controller: _passwordController,
+                    hint: 'Enter your password',
+                    isPassword: true,
+                  ),
+
+                  const SizedBox(height: 5),
+
+                  // Forgot password
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: _forgotPassword,
+                      style: TextButton.styleFrom(
+                        foregroundColor: primaryGreen,
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(10, 10),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // Login button
-                    SizedBox(
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primaryGreen,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                          elevation: 0,
-                        ),
-                        child: _isLoading
-                            ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2.5,
-                                ),
-                              )
-                            : const Text(
-                                'Log in',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-
-                    // OR divider
-                    Row(
-                      children: [
-                        const Expanded(child: Divider(thickness: 1)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          child: Text(
-                            'OR',
-                            style: TextStyle(
-                              color: Colors.grey.shade700,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const Expanded(child: Divider(thickness: 1)),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Google button
-                    SizedBox(
-                      height: 46,
-                      child: OutlinedButton(
-                        onPressed: _isLoading ? null : _signInWithGoogle,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.black87,
-                          side: BorderSide(color: Colors.grey.shade400),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(26),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Image.network(
-                              'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
-                              height: 20,
-                            ),
-                            const SizedBox(width: 10),
-                            const Text(
-                              'Log in with Google',
-                              style: TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                          ],
+                      child: const Text(
+                        'Forget your password?',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                  ),
+                  const SizedBox(height: 25),
 
-                    // Register link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          "Don't have an account? ",
-                          style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const RegisterScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'Register here!',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w800,
-                              color: primaryGreen,
-                            ),
-                          ),
-                        ),
-                      ],
+                  // Login button
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryGreen,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(55),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30),
+                      ),
                     ),
-                  ],
-                ),
+                    child: _isLoading
+                        ? const SizedBox(
+                            height: 22,
+                            width: 22,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2.5,
+                            ),
+                          )
+                        : const Text('Log in', style: TextStyle(fontSize: 18)),
+                  ),
+
+                  const SizedBox(height: 25),
+                  _buildDivider(),
+                  const SizedBox(height: 25),
+
+                  // Google button
+                  _buildGoogleButton(),
+
+                  const SizedBox(height: 30),
+                  _buildRegisterLink(context),
+                ],
               ),
             ),
           ),
@@ -445,68 +357,110 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
-}
 
-// ─────────────────────────────────────────
-// Widget helpers
-// ─────────────────────────────────────────
-class _FieldLabel extends StatelessWidget {
-  final String text;
-  const _FieldLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 12.5,
-        fontWeight: FontWeight.w700,
-        color: Colors.black87,
+  // ─────────────────────────────────────────
+  // Widget helpers (ดึงสไตล์มาจาก Register Screen)
+  // ─────────────────────────────────────────
+  Widget _buildLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
       ),
     );
   }
-}
 
-class _InputBox extends StatelessWidget {
-  final TextEditingController controller;
-  final String hintText;
-  final bool obscureText;
-
-  const _InputBox({
-    required this.controller,
-    required this.hintText,
-    required this.obscureText,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: obscureText
-          ? TextInputType.text
-          : TextInputType.emailAddress,
-      decoration: InputDecoration(
-        hintText: hintText,
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade300),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.grey.shade500),
+  Widget _buildInputBox({
+    required TextEditingController controller,
+    required String hint,
+    bool isPassword = false,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: controller,
+        obscureText: isPassword,
+        keyboardType: isPassword
+            ? TextInputType.text
+            : TextInputType.emailAddress,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          border: InputBorder.none,
         ),
       ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return const Row(
+      children: [
+        Expanded(child: Divider(thickness: 1)),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 10),
+          child: Text("OR", style: TextStyle(color: Colors.grey)),
+        ),
+        Expanded(child: Divider(thickness: 1)),
+      ],
+    );
+  }
+
+  Widget _buildGoogleButton() {
+    return OutlinedButton.icon(
+      onPressed: _isLoading ? null : _signInWithGoogle,
+      icon: Image.network(
+        'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/1200px-Google_%22G%22_logo.svg.png',
+        height: 20,
+      ),
+      label: const Text(
+        "Log in with Google",
+        style: TextStyle(color: Colors.black),
+      ),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size.fromHeight(55),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+        side: const BorderSide(color: Colors.grey),
+      ),
+    );
+  }
+
+  Widget _buildRegisterLink(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text("Don't have an account? "),
+        TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const RegisterScreen()),
+            );
+          },
+          child: const Text(
+            "Register here!",
+            style: TextStyle(
+              color: primaryGreen,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
