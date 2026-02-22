@@ -118,11 +118,14 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
     if (_profileImage == null) return null;
 
     try {
-      const cloudName = 'dvekcyzya'; // 👈 paste from dashboard
-      const uploadPreset = 'mpn7oa1x'; // 👈 paste preset name
+      const cloudName = 'dvekcyzya';
+      const uploadPreset = 'mpn7oa1x';
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final publicId = 'profile_${uid}_$timestamp'; // 👈 unique every time
+      final publicId = 'profile_${uid}_$timestamp';
+
+      // ✅ Read as bytes instead of path (fixes Android cache issue)
+      final bytes = await _profileImage!.readAsBytes();
 
       final uri = Uri.parse(
         'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
@@ -130,19 +133,25 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
 
       final request = http.MultipartRequest('POST', uri)
         ..fields['upload_preset'] = uploadPreset
-        ..fields['public_id'] = 'profile_$uid'
+        ..fields['public_id'] = publicId
         ..files.add(
-          await http.MultipartFile.fromPath('file', _profileImage!.path),
+          http.MultipartFile.fromBytes(
+            'file',
+            bytes,
+            filename: 'profile_$uid.jpg', // ✅ explicit filename with extension
+          ),
         );
 
       final response = await request.send();
       final responseData = await response.stream.bytesToString();
       final jsonData = jsonDecode(responseData);
 
+      debugPrint('Cloudinary response: $jsonData');
+
       if (response.statusCode == 200) {
         return jsonData['secure_url'] as String?;
       } else {
-        debugPrint('Cloudinary error: $jsonData');
+        debugPrint('❌ Cloudinary error: $jsonData');
         return null;
       }
     } catch (e) {
