@@ -1,8 +1,11 @@
 import 'dart:ui';
-import 'dart:convert'; // สำหรับแปลงข้อมูลที่อ่านจาก NFC
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:nfc_manager/nfc_manager.dart'; //
-import 'package:app_settings/app_settings.dart'; // สำหรับเปิดหน้าตั้งค่า NFC
+import 'package:nfc_manager/nfc_manager.dart';
+import 'package:app_settings/app_settings.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -13,18 +16,104 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // ฟังก์ชันสำหรับเช็ค NFC และเปิดหน้าต่างสแกน
+  // User data
+  String _name = '';
+  String _profileImageUrl = '';
+  bool _isLoadingUser = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  // ─────────────────────────────────────────
+  // Load user data from Firestore
+  // ─────────────────────────────────────────
+  Future<void> _loadUserData() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+
+      if (doc.exists) {
+        final data = doc.data()!;
+        setState(() {
+          _name = data['name'] ?? data['displayName'] ?? 'User';
+          _profileImageUrl = data['profileImageUrl'] ?? '';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user data: $e');
+    } finally {
+      setState(() => _isLoadingUser = false);
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // Logout
+  // ─────────────────────────────────────────
+  Future<void> _logout() async {
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Log out'),
+        content: const Text('Are you sure you want to log out?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B4332),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Log out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      await GoogleSignIn().signOut(); // sign out Google if used
+      await FirebaseAuth.instance.signOut();
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false, // clear all screens from stack
+        );
+      }
+    } catch (e) {
+      debugPrint('Logout error: $e');
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // NFC
+  // ─────────────────────────────────────────
   void _showNfcDetails(BuildContext context) async {
-    // 1. ตรวจสอบว่าเครื่องเปิด NFC หรือไม่
     bool isAvailable = await NfcManager.instance.isAvailable();
 
     if (!isAvailable) {
-      // ✅ ถ้าปิดอยู่ ให้เด้งไปหน้า Settings ของมือถือ (Redmi Note 9 Pro)
       _showNfcSettingsDialog(context);
       return;
     }
 
-    // 2. เริ่มโหมดอ่าน NFC ทันที
     NfcManager.instance.startSession(
       onDiscovered: (NfcTag tag) async {
         try {
@@ -33,17 +122,10 @@ class _HomeScreenState extends State<HomeScreen> {
             var record = ndef.cachedMessage!.records.first;
             String allergyKey = utf8.decode(record.payload.sublist(3));
 
-            // 1. หยุดการอ่านซ้ำทันที (ลดอาการ Bounce)
-            // เราจะไม่สั่ง stopSession ทันทีที่นี่ แต่จะให้ Dialog ปิดก่อน
-
             if (mounted) {
-              // 2. ปิด Popup UI ของเราก่อน
               Navigator.of(context, rootNavigator: true).pop();
-
-              // 3. หน่วงเวลาเล็กน้อยเพื่อให้ Android คลายสถานะจากบัตรใบเดิม
               await Future.delayed(const Duration(milliseconds: 500));
 
-              // 4. นำทางไปหน้าแจ้งเตือน
               if (mounted) {
                 await Navigator.push(
                   context,
@@ -57,24 +139,16 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         } catch (e) {
           debugPrint('Error: $e');
-        } finally {
-          // สำคัญ: ไม่ต้องสั่ง stopSession ที่นี่ เพราะเราสั่งใน .then() ของ showDialog แล้ว
         }
       },
     );
 
-    // 3. แสดง Popup UI พร้อมเอฟเฟกต์เบลอ (BackdropFilter)
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(
-        0.6,
-      ), // ปรับสีพื้นหลังให้เข้มขึ้นเพื่อให้เบลอชัด
+      barrierColor: Colors.black.withOpacity(0.6),
       builder: (context) {
         return BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: 12,
-            sigmaY: 12,
-          ), // ปรับค่าความมัวให้เห็นชัดเจน
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: AlertDialog(
             backgroundColor: Colors.white,
             shape: RoundedRectangleBorder(
@@ -106,14 +180,12 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     ).then((_) async {
-      // รอสักครู่ก่อนหยุด Session เพื่อให้การแตะบัตรสิ้นสุดลงจริงๆ
       await Future.delayed(const Duration(seconds: 1));
       NfcManager.instance.stopSession();
       debugPrint('หยุดโหมดอ่าน NFC แล้ว');
     });
   }
 
-  // ฟังก์ชันแจ้งเตือนให้เปิด NFC ในเครื่อง
   void _showNfcSettingsDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -130,7 +202,6 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // เปิดหน้าตั้งค่า NFC ของ Android โดยตรง
               AppSettings.openAppSettings(type: AppSettingsType.nfc);
             },
             child: const Text("ไปที่การตั้งค่า"),
@@ -140,6 +211,9 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // ─────────────────────────────────────────
+  // Build
+  // ─────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -163,41 +237,43 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Row(
         children: [
-          const CircleAvatar(
+          // Profile image — shows real image or default icon
+          CircleAvatar(
             radius: 25,
-            backgroundColor: Colors.grey,
-            backgroundImage: NetworkImage(
-              'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-            ),
+            backgroundColor: Colors.grey[300],
+            backgroundImage: _profileImageUrl.isNotEmpty
+                ? NetworkImage(_profileImageUrl)
+                : null,
+            child: _profileImageUrl.isEmpty
+                ? const Icon(Icons.person, color: Colors.white, size: 28)
+                : null,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
+              children: [
+                // Real name from Firestore
                 Text(
-                  'เด็กชายตรงเองครับ',
-                  style: TextStyle(
+                  _isLoadingUser ? 'Loading...' : _name,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1B4332),
                   ),
                 ),
-                Text(
+                const Text(
                   'Good Morning',
                   style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
             ),
           ),
+          // Logout button
           IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const LoginScreen()),
-              );
-            },
+            onPressed: _logout,
             icon: const Icon(Icons.logout, color: Colors.grey),
+            tooltip: 'Log out',
           ),
         ],
       ),
@@ -253,7 +329,7 @@ class AllergyWarningScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.red[50], // พื้นหลังสีแดงแจ้งเตือน
+      backgroundColor: Colors.red[50],
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(30.0),
