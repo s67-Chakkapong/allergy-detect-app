@@ -5,6 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'home_screen.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class IdentifyAllergyScreen extends StatefulWidget {
   const IdentifyAllergyScreen({super.key});
@@ -76,8 +80,10 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
               onTap: () async {
                 Navigator.pop(context);
                 final picked = await picker.pickImage(
-                  source: ImageSource.camera,
+                  source: ImageSource.camera, // or gallery
                   imageQuality: 70,
+                  maxWidth: 800, // ✅ add this
+                  maxHeight: 800, // ✅ add this
                 );
                 if (picked != null) {
                   setState(() => _profileImage = File(picked.path));
@@ -112,16 +118,35 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
     if (_profileImage == null) return null;
 
     try {
-      final ref = FirebaseStorage.instance
-          .ref()
-          .child('profile_images')
-          .child('$uid.jpg');
+      const cloudName = 'dvekcyzya'; // 👈 paste from dashboard
+      const uploadPreset = 'mpn7oa1x'; // 👈 paste preset name
 
-      await ref.putFile(_profileImage!);
-      final url = await ref.getDownloadURL();
-      return url;
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final publicId = 'profile_${uid}_$timestamp'; // 👈 unique every time
+
+      final uri = Uri.parse(
+        'https://api.cloudinary.com/v1_1/$cloudName/image/upload',
+      );
+
+      final request = http.MultipartRequest('POST', uri)
+        ..fields['upload_preset'] = uploadPreset
+        ..fields['public_id'] = 'profile_$uid'
+        ..files.add(
+          await http.MultipartFile.fromPath('file', _profileImage!.path),
+        );
+
+      final response = await request.send();
+      final responseData = await response.stream.bytesToString();
+      final jsonData = jsonDecode(responseData);
+
+      if (response.statusCode == 200) {
+        return jsonData['secure_url'] as String?;
+      } else {
+        debugPrint('Cloudinary error: $jsonData');
+        return null;
+      }
     } catch (e) {
-      debugPrint('Image upload error: $e');
+      debugPrint('Upload error: $e');
       return null;
     }
   }

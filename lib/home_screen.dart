@@ -41,23 +41,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .get(const GetOptions(source: Source.server));
+          .get(const GetOptions(source: Source.server)); // 👈 skip cache
 
       if (doc.exists) {
         final data = doc.data()!;
-        final name = data['name'] ?? '';
-        final displayName = data['displayName'] ?? '';
-        final imageUrl = data['profileImageUrl'] ?? '';
-
         setState(() {
-          // Use name if filled, fallback to displayName, fallback to email
-          _name = name.isNotEmpty
-              ? name
-              : displayName.isNotEmpty
-              ? displayName
-              : FirebaseAuth.instance.currentUser?.email ?? 'User';
-
-          _profileImageUrl = imageUrl;
+          _name = data['name'] ?? '';
+          _profileImageUrl = data['profileImageUrl'] ?? '';
         });
       }
     } catch (e) {
