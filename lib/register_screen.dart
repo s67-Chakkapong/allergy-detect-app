@@ -1,3 +1,4 @@
+import 'package:allergy_detect_app/identify_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -59,7 +60,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
             'email': _emailController.text.trim(),
             'displayName': '',
             'profileImageUrl': '',
+            'name': '', // 👈 add this
+            'age': 0, // 👈 add this
+            'gender': '', // 👈 add this
+            'allergy': '', // 👈 add this
+            'isProfileComplete': false,
             'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
           });
 
       _showSnackBar('Account created successfully!');
@@ -67,7 +74,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (mounted) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          MaterialPageRoute(
+            builder: (context) => const IdentifyAllergyScreen(),
+          ),
         );
       }
     } on FirebaseAuthException catch (e) {
@@ -132,7 +141,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 'email': user.email,
                 'displayName': user.displayName ?? '',
                 'profileImageUrl': user.photoURL ?? '',
+                'name': '', // 👈 add this
+                'age': 0, // 👈 add this
+                'gender': '', // 👈 add this
+                'allergy': '', // 👈 add this
+                'isProfileComplete': false,
                 'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
               });
         }
 
@@ -141,7 +156,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         if (mounted) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            MaterialPageRoute(
+              builder: (context) => const IdentifyAllergyScreen(),
+            ),
           );
         }
       }

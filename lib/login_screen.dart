@@ -1,15 +1,244 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
+import 'identify_screen.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    const primaryGreen = Color(0xFF1F5A3A);
-    const cardBg = Color(0xFFF6F3EF);
+  State<LoginScreen> createState() => _LoginScreenState();
+}
 
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _isLoading = false;
+
+  static const primaryGreen = Color(0xFF1F5A3A);
+  static const cardBg = Color(0xFFF6F3EF);
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  // ─────────────────────────────────────────
+  // Check profile and navigate accordingly
+  // ─────────────────────────────────────────
+  Future<void> _navigateAfterLogin(User user) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.uid)
+        .get();
+
+    final isProfileComplete = doc.data()?['isProfileComplete'] ?? false;
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => isProfileComplete
+              ? const HomeScreen() // returning user → Home
+              : const IdentifyAllergyScreen(), // new user → fill profile
+        ),
+      );
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // Email & Password Login
+  // ─────────────────────────────────────────
+  Future<void> _login() async {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
+      _showSnackBar('Please fill in all fields');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
+
+      await _navigateAfterLogin(credential.user!);
+    } on FirebaseAuthException catch (e) {
+      String message = 'Login failed';
+      if (e.code == 'user-not-found') {
+        message = 'No account found with this email';
+      } else if (e.code == 'wrong-password') {
+        message = 'Incorrect password';
+      } else if (e.code == 'invalid-email') {
+        message = 'Invalid email address';
+      } else if (e.code == 'user-disabled') {
+        message = 'This account has been disabled';
+      }
+      _showSnackBar(message);
+    } catch (e) {
+      _showSnackBar('An error occurred. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // Google Sign In
+  // ─────────────────────────────────────────
+  Future<void> _signInWithGoogle() async {
+    setState(() => _isLoading = true);
+
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await FirebaseAuth.instance
+          .signInWithCredential(credential);
+
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        final isNewUser = userCredential.additionalUserInfo?.isNewUser ?? false;
+
+        // Save to Firestore only if brand new user
+        if (isNewUser) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .set({
+                'uid': user.uid,
+                'email': user.email,
+                'displayName': user.displayName ?? '',
+                'profileImageUrl': user.photoURL ?? '',
+                'name': '',
+                'age': 0,
+                'gender': '',
+                'allergy': '',
+                'isProfileComplete': false,
+                'createdAt': FieldValue.serverTimestamp(),
+                'updatedAt': FieldValue.serverTimestamp(),
+              });
+        }
+
+        await _navigateAfterLogin(user);
+      }
+    } catch (e) {
+      _showSnackBar('Google sign-in failed. Please try again.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // Forgot Password
+  // ─────────────────────────────────────────
+  Future<void> _forgotPassword() async {
+    // Show dialog to enter email
+    final emailController = TextEditingController(
+      text: _emailController.text.trim(),
+    );
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Reset Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter your email and we\'ll send you a reset link.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: 'your@email.com',
+                filled: true,
+                fillColor: Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (emailController.text.trim().isEmpty) return;
+
+              try {
+                await FirebaseAuth.instance.sendPasswordResetEmail(
+                  email: emailController.text.trim(),
+                );
+                if (mounted) {
+                  Navigator.pop(context);
+                  _showSnackBar('Reset link sent! Check your email.');
+                }
+              } on FirebaseAuthException catch (e) {
+                if (mounted) {
+                  Navigator.pop(context);
+                  _showSnackBar(
+                    e.code == 'user-not-found'
+                        ? 'No account found with this email'
+                        : 'Failed to send reset email',
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // ─────────────────────────────────────────
+  // Build
+  // ─────────────────────────────────────────
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFEFEFEF),
       body: SafeArea(
@@ -38,7 +267,9 @@ class LoginScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 6),
-                    Text(
+
+                    // Title
+                    const Text(
                       'Log in',
                       textAlign: TextAlign.center,
                       style: TextStyle(
@@ -52,21 +283,28 @@ class LoginScreen extends StatelessWidget {
                     // Email
                     const _FieldLabel('Email'),
                     const SizedBox(height: 8),
-                    const _InputBox(hintText: '', obscureText: false),
+                    _InputBox(
+                      controller: _emailController,
+                      hintText: 'Enter your email',
+                      obscureText: false,
+                    ),
                     const SizedBox(height: 14),
 
                     // Password
                     const _FieldLabel('Password'),
                     const SizedBox(height: 8),
-                    const _InputBox(hintText: '', obscureText: true),
-
+                    _InputBox(
+                      controller: _passwordController,
+                      hintText: 'Enter your password',
+                      obscureText: true,
+                    ),
                     const SizedBox(height: 10),
 
-                    // Forget password
+                    // Forgot password
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton(
-                        onPressed: () {},
+                        onPressed: _forgotPassword,
                         style: TextButton.styleFrom(
                           foregroundColor: primaryGreen,
                           padding: EdgeInsets.zero,
@@ -82,21 +320,13 @@ class LoginScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 10),
 
                     // Login button
                     SizedBox(
                       height: 48,
                       child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const HomeScreen(),
-                            ),
-                          );
-                        },
+                        onPressed: _isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryGreen,
                           foregroundColor: Colors.white,
@@ -105,16 +335,24 @@ class LoginScreen extends StatelessWidget {
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Log in',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 22,
+                                width: 22,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
+                              )
+                            : const Text(
+                                'Log in',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                       ),
                     ),
-
                     const SizedBox(height: 18),
 
                     // OR divider
@@ -135,14 +373,13 @@ class LoginScreen extends StatelessWidget {
                         const Expanded(child: Divider(thickness: 1)),
                       ],
                     ),
-
                     const SizedBox(height: 14),
 
-                    // Google button (ใช้โลโก้หลายสีแบบเดียวกับหน้า Register)
+                    // Google button
                     SizedBox(
                       height: 46,
                       child: OutlinedButton(
-                        onPressed: () {},
+                        onPressed: _isLoading ? null : _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.black87,
                           side: BorderSide(color: Colors.grey.shade400),
@@ -159,17 +396,16 @@ class LoginScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: 10),
                             const Text(
-                              'Log in with google',
+                              'Log in with Google',
                               style: TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 16),
 
-                    // Bottom text
+                    // Register link
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -189,7 +425,7 @@ class LoginScreen extends StatelessWidget {
                               ),
                             );
                           },
-                          child: Text(
+                          child: const Text(
                             'Register here!',
                             style: TextStyle(
                               fontSize: 12.5,
@@ -211,6 +447,9 @@ class LoginScreen extends StatelessWidget {
   }
 }
 
+// ─────────────────────────────────────────
+// Widget helpers
+// ─────────────────────────────────────────
 class _FieldLabel extends StatelessWidget {
   final String text;
   const _FieldLabel(this.text);
@@ -229,15 +468,24 @@ class _FieldLabel extends StatelessWidget {
 }
 
 class _InputBox extends StatelessWidget {
+  final TextEditingController controller;
   final String hintText;
   final bool obscureText;
 
-  const _InputBox({required this.hintText, required this.obscureText});
+  const _InputBox({
+    required this.controller,
+    required this.hintText,
+    required this.obscureText,
+  });
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: controller,
       obscureText: obscureText,
+      keyboardType: obscureText
+          ? TextInputType.text
+          : TextInputType.emailAddress,
       decoration: InputDecoration(
         hintText: hintText,
         filled: true,
