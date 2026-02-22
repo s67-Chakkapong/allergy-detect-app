@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart';
 import 'identify_screen.dart';
+import 'member_list_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -246,7 +247,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       fit: BoxFit.cover,
                       width: 44,
                       height: 44,
-                      errorBuilder: (_, __, ___) => const Icon(
+                      errorBuilder: (_, _, _) => const Icon(
                         Icons.person,
                         size: 28,
                         color: primaryGreen,
@@ -399,7 +400,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icons.person_add_alt_1,
                 title: 'Add member',
                 subtitle: 'เพิ่มสมาชิก',
-                onTap: () {},
+                onTap: () {
+                  // 🟢 เปลี่ยนมาเปิดหน้า MemberListScreen แทน
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const MemberListScreen(),
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 15),
               _buildMenuButton(

@@ -195,7 +195,7 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
         'age': int.tryParse(_ageController.text.trim()) ?? 0,
         'gender': _selectedGender,
         'allergy': _selectedAllergy,
-        if (imageUrl != null) 'profileImageUrl': imageUrl,
+        'profileImageUrl': ?imageUrl,
         'isProfileComplete': true,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
