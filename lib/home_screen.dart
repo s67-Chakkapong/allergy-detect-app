@@ -7,6 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'login_screen.dart';
+import 'identify_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -16,10 +17,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  // User data
   String _name = '';
   String _profileImageUrl = '';
   bool _isLoadingUser = true;
+
+  static const Color primaryGreen = Color(0xFF1B4D3E);
+  static const Color bgCream = Color(0xFFF7F5EE);
 
   @override
   void initState() {
@@ -38,13 +41,23 @@ class _HomeScreenState extends State<HomeScreen> {
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .get();
+          .get(const GetOptions(source: Source.server));
 
       if (doc.exists) {
         final data = doc.data()!;
+        final name = data['name'] ?? '';
+        final displayName = data['displayName'] ?? '';
+        final imageUrl = data['profileImageUrl'] ?? '';
+
         setState(() {
-          _name = data['name'] ?? data['displayName'] ?? 'User';
-          _profileImageUrl = data['profileImageUrl'] ?? '';
+          // Use name if filled, fallback to displayName, fallback to email
+          _name = name.isNotEmpty
+              ? name
+              : displayName.isNotEmpty
+              ? displayName
+              : FirebaseAuth.instance.currentUser?.email ?? 'User';
+
+          _profileImageUrl = imageUrl;
         });
       }
     } catch (e) {
@@ -55,51 +68,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ─────────────────────────────────────────
-  // Logout
+  // Logout — sign out and go to LoginScreen
   // ─────────────────────────────────────────
   Future<void> _logout() async {
-    // Show confirmation dialog
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Log out'),
-        content: const Text('Are you sure you want to log out?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1B4332),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text('Log out'),
-          ),
-        ],
-      ),
-    );
+    await GoogleSignIn().signOut();
+    await FirebaseAuth.instance.signOut();
 
-    if (confirm != true) return;
-
-    try {
-      await GoogleSignIn().signOut(); // sign out Google if used
-      await FirebaseAuth.instance.signOut();
-
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false, // clear all screens from stack
-        );
-      }
-    } catch (e) {
-      debugPrint('Logout error: $e');
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
     }
   }
 
@@ -162,11 +142,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
-                    color: Color(0xFF1B4332),
+                    color: primaryGreen,
                   ),
                 ),
                 SizedBox(height: 30),
-                Icon(Icons.nfc, size: 80, color: Color(0xFF1B4332)),
+                Icon(Icons.nfc, size: 80, color: primaryGreen),
                 SizedBox(height: 20),
                 Text("นำบัตรมาแตะที่ด้านหลังโทรศัพท์"),
                 SizedBox(height: 10),
@@ -182,7 +162,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ).then((_) async {
       await Future.delayed(const Duration(seconds: 1));
       NfcManager.instance.stopSession();
-      debugPrint('หยุดโหมดอ่าน NFC แล้ว');
     });
   }
 
@@ -217,111 +196,286 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F8F6),
+      backgroundColor: bgCream,
       body: SafeArea(
-        child: Column(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24.0,
+              vertical: 20.0,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(),
+                const SizedBox(height: 30),
+                GestureDetector(
+                  onTap: () => _showNfcDetails(context),
+                  child: _buildNfcCard(),
+                ),
+                const SizedBox(height: 35),
+                _buildMenuSection(),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────
+  // Header
+  // ─────────────────────────────────────────
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: primaryGreen, width: 1.5),
+          ),
+          child: CircleAvatar(
+            radius: 22,
+            backgroundColor: const Color(0xFF8FA895),
+            child: _profileImageUrl.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(
+                      _profileImageUrl,
+                      fit: BoxFit.cover,
+                      width: 44,
+                      height: 44,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.person,
+                        size: 28,
+                        color: primaryGreen,
+                      ),
+                    ),
+                  )
+                : const Icon(Icons.person, size: 28, color: primaryGreen),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeaderProfile(context),
-            GestureDetector(
-              onTap: () => _showNfcDetails(context),
-              child: _buildNfcCard(),
+            Text(
+              _isLoadingUser ? 'Loading...' : _name,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+            const Text(
+              'Good Morning',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: primaryGreen,
+              ),
+            ),
+          ],
+        ),
+        const Spacer(),
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(
+            Icons.live_help_outlined,
+            color: Colors.black87,
+            size: 28,
+          ),
+        ),
+        IconButton(
+          onPressed: _logout,
+          icon: const Icon(Icons.logout, color: Colors.black87, size: 28),
+          tooltip: 'Log out',
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────
+  // NFC Card
+  // ─────────────────────────────────────────
+  Widget _buildNfcCard() {
+    return Container(
+      width: double.infinity,
+      height: 200,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x804F6F52),
+            spreadRadius: 2,
+            blurRadius: 15,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            top: 20,
+            left: 20,
+            child: Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.rss_feed, color: Colors.white, size: 18),
+            ),
+          ),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.contactless_outlined,
+                  size: 50,
+                  color: Colors.black87,
+                ),
+                const SizedBox(height: 15),
+                const Text(
+                  'นำโทรศัพท์ของคุณไปสัมผัสกับ NFC Tag',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: primaryGreen,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Bring your phone close to the NFC tag.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────
+  // Menu Section
+  // ─────────────────────────────────────────
+  Widget _buildMenuSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Menu',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: primaryGreen,
+          ),
+        ),
+        const SizedBox(height: 15),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildMenuButton(
+                icon: Icons.person_pin,
+                title: 'Edit profile',
+                subtitle: 'แก้ไขข้อมูลส่วนตัว',
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const IdentifyAllergyScreen(),
+                    ),
+                  );
+                  _loadUserData();
+                },
+              ),
+              const SizedBox(width: 15),
+              _buildMenuButton(
+                icon: Icons.person_add_alt_1,
+                title: 'Add member',
+                subtitle: 'เพิ่มสมาชิก',
+                onTap: () {},
+              ),
+              const SizedBox(width: 15),
+              _buildMenuButton(
+                icon: Icons.history,
+                title: 'History',
+                subtitle: 'ประวัติการใช้งาน',
+                onTap: () {},
+              ),
+              const SizedBox(width: 15),
+              _buildMenuButton(
+                icon: Icons.bookmark,
+                title: 'Bookmark',
+                subtitle: 'รายการที่บันทึกไว้',
+                onTap: () {},
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMenuButton({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 82,
+        height: 100,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              spreadRadius: 1,
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 32, color: Colors.black87),
+            const SizedBox(height: 8),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: primaryGreen,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: const TextStyle(fontSize: 9, color: Colors.grey),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildHeaderProfile(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          // Profile image — shows real image or default icon
-          CircleAvatar(
-            radius: 25,
-            backgroundColor: Colors.grey[300],
-            backgroundImage: _profileImageUrl.isNotEmpty
-                ? NetworkImage(_profileImageUrl)
-                : null,
-            child: _profileImageUrl.isEmpty
-                ? const Icon(Icons.person, color: Colors.white, size: 28)
-                : null,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Real name from Firestore
-                Text(
-                  _isLoadingUser ? 'Loading...' : _name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1B4332),
-                  ),
-                ),
-                const Text(
-                  'Good Morning',
-                  style: TextStyle(fontSize: 14, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
-          // Logout button
-          IconButton(
-            onPressed: _logout,
-            icon: const Icon(Icons.logout, color: Colors.grey),
-            tooltip: 'Log out',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNfcCard() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: const [
-          Icon(Icons.nfc, size: 80, color: Color(0xFF1B4332)),
-          SizedBox(height: 20),
-          Text(
-            'แตะเพื่อเริ่มการสแกน NFC',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF1B4332),
-            ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Tap to start scanning NFC tag.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 14, color: Colors.grey),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
-// --- หน้าจอแจ้งเตือนเมื่อพบสารก่อภูมิแพ้ ---
+// ─────────────────────────────────────────
+// Allergy Warning Screen
+// ─────────────────────────────────────────
 class AllergyWarningScreen extends StatelessWidget {
   final String allergyType;
   const AllergyWarningScreen({super.key, required this.allergyType});

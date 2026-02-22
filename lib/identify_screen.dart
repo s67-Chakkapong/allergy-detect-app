@@ -17,6 +17,7 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
   // State variables
   String? _selectedGender;
   String? _selectedAllergy;
+  String _existingImageUrl = '';
   bool _isLoading = false;
   bool _isFetching = true;
   File? _profileImage;
@@ -136,7 +137,7 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
       final doc = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
-          .get();
+          .get(const GetOptions(source: Source.server));
 
       if (doc.exists) {
         final data = doc.data()!;
@@ -149,6 +150,7 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
           _selectedAllergy = (data['allergy'] as String?)?.isEmpty == true
               ? null
               : data['allergy'];
+          _existingImageUrl = data['profileImageUrl'] ?? '';
         });
       }
     } catch (e) {
@@ -193,7 +195,7 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
         'age': int.tryParse(_ageController.text.trim()) ?? 0,
         'gender': _selectedGender,
         'allergy': _selectedAllergy,
-        'profileImageUrl': imageUrl ?? '',
+        if (imageUrl != null) 'profileImageUrl': imageUrl,
         'isProfileComplete': true,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
@@ -302,9 +304,13 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
                           radius: 50,
                           backgroundColor: Colors.grey[200],
                           backgroundImage: _profileImage != null
-                              ? FileImage(_profileImage!)
-                              : null,
-                          child: _profileImage == null
+                              ? FileImage(_profileImage!) as ImageProvider
+                              : (_existingImageUrl.isNotEmpty
+                                    ? NetworkImage(_existingImageUrl)
+                                    : null),
+                          child:
+                              (_profileImage == null &&
+                                  _existingImageUrl.isEmpty)
                               ? Icon(
                                   Icons.camera_alt,
                                   size: 30,
