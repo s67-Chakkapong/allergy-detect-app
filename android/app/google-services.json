@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "650693791997",
+    "project_id": "allergy-detect-9d658",
+    "storage_bucket": "allergy-detect-9d658.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:650693791997:android:00a028e80ed9038271ee94",
+        "android_client_info": {
+          "package_name": "com.example.allergy_detect_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "650693791997-l5cvtagrc1scjrlmg82hl895gr3i0i65.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.allergy_detect_app",
+            "certificate_hash": "2be0ca404b5b31de38827c62ca7967c97487f710"
+          }
+        },
+        {
+          "client_id": "650693791997-sp46j13q6mbjih1rlr1egc335gn7in7g.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZ2pAgwWJvnQGBrHP65gHRaxqWu3czzxU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "650693791997-sp46j13q6mbjih1rlr1egc335gn7in7g.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
