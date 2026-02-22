@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "650693791997-qhkovcai5t0ul3egpnk6vj4nakbbnkbu.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.allergy_detect_app",
+            "certificate_hash": "05982d8fd70d2fbae43c2a59db36e86cb939f5fd"
+          }
+        },
+        {
           "client_id": "650693791997-sp46j13q6mbjih1rlr1egc335gn7in7g.apps.googleusercontent.com",
           "client_type": 3
         }
@@ -37,6 +45,13 @@
             {
               "client_id": "650693791997-sp46j13q6mbjih1rlr1egc335gn7in7g.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "650693791997-843pfdu0m38rdrd76c3kku9la5r6q45a.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.allergyDetectApp"
+              }
             }
           ]
         }
