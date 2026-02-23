@@ -6,9 +6,11 @@ import 'package:app_settings/app_settings.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+
 import 'login_screen.dart';
 import 'identify_screen.dart';
 import 'member_list_screen.dart';
+import 'result_screen.dart'; // 🟢 เพิ่มการเชื่อมต่อไปหน้าผลลัพธ์อันใหม่
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -75,7 +77,87 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ─────────────────────────────────────────
-  // NFC
+  // 🟢 ฟังก์ชันประมวลผล NFC แบบฉลาด (เช็คส่วนผสม)
+  // ─────────────────────────────────────────
+  Future<void> _processNfcTag(String nfcProductId) async {
+    // โชว์ Loading ระหว่างดึงข้อมูล
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator(color: primaryGreen)),
+    );
+
+    try {
+      // 1. ดึงข้อมูลสินค้าจาก Firestore
+      final productDoc = await FirebaseFirestore.instance.collection('products').doc(nfcProductId).get();
+
+      if (!productDoc.exists) {
+        Navigator.pop(context); // ปิด Loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('ไม่พบข้อมูลสินค้านี้ในระบบ')),
+        );
+        return;
+      }
+
+      List<String> productIngredients = List<String>.from(productDoc.data()?['ingredients'] ?? []);
+      String productName = productDoc.data()?['name'] ?? 'สินค้าไม่ทราบชื่อ';
+
+      // 2. ดึงข้อมูลสมาชิกครอบครัว
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final membersSnapshot = await FirebaseFirestore.instance.collection('users').doc(uid).collection('members').get();
+
+      bool isSafe = true;
+      List<String> warningMessages = [];
+
+      // 3. ตรวจสอบส่วนผสมกับอาการแพ้
+      for (var member in membersSnapshot.docs) {
+        String memberName = member.data()['name'] ?? 'สมาชิก';
+        String allergyKey = member.data()['allergy'] ?? ''; 
+
+        if (allergyKey.isNotEmpty) {
+          final dictDoc = await FirebaseFirestore.instance.collection('allergy_dictionary').doc(allergyKey).get();
+          
+          if (dictDoc.exists) {
+            List<dynamic> badWords = dictDoc.data()?['avoid_words'] ?? [];
+            
+            for (String ingredient in productIngredients) {
+              for (String badWord in badWords) {
+                if (ingredient.toLowerCase().contains(badWord.toLowerCase())) {
+                  isSafe = false;
+                  warningMessages.add('- คุณ "$memberName" แพ้ "$ingredient"');
+                  break; 
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 4. ไปหน้า ResultScreen (แสดงหน้าจอ เขียว/แดง)
+      if (mounted) {
+        Navigator.pop(context); // ปิด Loading
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResultScreen(
+              isSafe: isSafe,
+              productName: productName,
+              ingredients: productIngredients,
+              warningMessages: warningMessages.toSet().toList(),
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
+      }
+    }
+  }
+
+  // ─────────────────────────────────────────
+  // NFC (เปิดระบบอ่านและโชว์หน้าต่างเบลอ)
   // ─────────────────────────────────────────
   void _showNfcDetails(BuildContext context) async {
     bool isAvailable = await NfcManager.instance.isAvailable();
@@ -91,29 +173,31 @@ class _HomeScreenState extends State<HomeScreen> {
           var ndef = Ndef.from(tag);
           if (ndef != null && ndef.cachedMessage != null) {
             var record = ndef.cachedMessage!.records.first;
-            String allergyKey = utf8.decode(record.payload.sublist(3));
+            
+            // 🟢 อ่านข้อมูลเป็นรหัสสินค้าแทน
+            String nfcPayload = utf8.decode(record.payload.sublist(3));
+            String productId = nfcPayload.trim();
+
+            await NfcManager.instance.stopSession(); // ปิดระบบอ่านหลังได้ข้อมูล
 
             if (mounted) {
-              Navigator.of(context, rootNavigator: true).pop();
-              await Future.delayed(const Duration(milliseconds: 500));
+              Navigator.of(context, rootNavigator: true).pop(); // ปิดหน้าต่าง Popup เบลอๆ
+              await Future.delayed(const Duration(milliseconds: 300)); // หน่วงเวลาเล็กน้อยให้ปิดสนิท
 
+              // 🟢 ส่งรหัสไปประมวลผลต่อ
               if (mounted) {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        AllergyWarningScreen(allergyType: allergyKey),
-                  ),
-                );
+                _processNfcTag(productId);
               }
             }
           }
         } catch (e) {
+          await NfcManager.instance.stopSession();
           debugPrint('Error: $e');
         }
       },
     );
 
+    // หน้าต่าง Popup แจ้งเตือนให้แตะ NFC (UI เดิมของคุณ)
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.6),
@@ -391,7 +475,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 title: 'Add member',
                 subtitle: 'เพิ่มสมาชิก',
                 onTap: () {
-                  // 🟢 เปลี่ยนมาเปิดหน้า MemberListScreen แทน
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -466,76 +549,6 @@ class _HomeScreenState extends State<HomeScreen> {
               overflow: TextOverflow.ellipsis,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────
-// Allergy Warning Screen
-// ─────────────────────────────────────────
-class AllergyWarningScreen extends StatelessWidget {
-  final String allergyType;
-  const AllergyWarningScreen({super.key, required this.allergyType});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.red[50],
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(30.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.warning_amber_rounded,
-                size: 120,
-                color: Colors.red,
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "ตรวจพบสารก่อภูมิแพ้!",
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.red,
-                ),
-              ),
-              const SizedBox(height: 15),
-              Text(
-                "อาหารนี้มีส่วนประกอบของ: $allergyType",
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 60),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    "รับทราบและระมัดระวัง",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
