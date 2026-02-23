@@ -5,6 +5,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'register_screen.dart';
 import 'home_screen.dart';
 import 'identify_screen.dart';
+import 'manufacturer_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +33,19 @@ class _LoginScreenState extends State<LoginScreen> {
   // Check profile and navigate accordingly
   // ─────────────────────────────────────────
   Future<void> _navigateAfterLogin(User user) async {
+    // 🟢 เงื่อนไขดักจับ Admin / Manufacturer
+    // คุณสามารถเปลี่ยนอีเมลนี้เป็นของจริงที่คุณต้องการใช้ได้เลยครับ
+    if (user.email == 'manufacturer@admin.com') {
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const ManufacturerScreen()),
+        );
+      }
+      return; // จบการทำงาน ไม่ต้องไปโหลดข้อมูล Profile ต่อ
+    }
+
+    // (ส่วนของโค้ดผู้ใช้ปกติ)
     final doc = await FirebaseFirestore.instance
         .collection('users')
         .doc(user.uid)
