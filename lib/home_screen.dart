@@ -92,12 +92,15 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
+      // ... โค้ดก่อนหน้า ...
       List<String> productIngredients = List<String>.from(
         productDoc.data()?['ingredients'] ?? productDoc.data()?['allergens'] ?? []
       );
       String productName = productDoc.data()?['name'] ?? 'สินค้าไม่ทราบชื่อ';
+      String imageUrl = productDoc.data()?['imageUrl'] ?? ''; // 🟢 เพิ่มบรรทัดนี้! ดึงลิงก์รูปมาเก็บไว้
 
       final uid = FirebaseAuth.instance.currentUser?.uid;
+      // ... โค้ดส่วนอื่นๆ ที่เช็คคนแพ้อาหาร ...
       if (uid == null) return;
 
       bool isOverallSafe = true;
@@ -186,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       // ส่งผลลัพธ์ไปแสดงหน้า ResultScreen
+      // ส่งผลลัพธ์ไปแสดงหน้า ResultScreen
       if (mounted) {
         Navigator.pop(context);
         Navigator.push(
@@ -197,8 +201,9 @@ class _HomeScreenState extends State<HomeScreen> {
               ingredients: productIngredients,
               warningMessages: warningMessages.toSet().toList(),
               userAvoidWords: allAvoidWords.toList(),
-              safeMembers: safeMembers,     // 🟢 ส่งรายชื่อคนทานได้ไป
-              unsafeMembers: unsafeMembers, // 🟢 ส่งรายชื่อคนทานไม่ได้ไป
+              safeMembers: safeMembers,     
+              unsafeMembers: unsafeMembers, 
+       
             ),
           ),
         );
@@ -471,14 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const Spacer(),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(
-            Icons.live_help_outlined,
-            color: Colors.black87,
-            size: 28,
-          ),
-        ),
+        // 🔴 เอาปุ่ม live_help_outlined ออกไปแล้ว เหลือแค่ปุ่ม Logout
         IconButton(
           onPressed: _logout,
           icon: const Icon(Icons.logout, color: Colors.black87, size: 28),
@@ -600,20 +598,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              const SizedBox(width: 15),
-              _buildMenuButton(
-                icon: Icons.history,
-                title: 'History',
-                subtitle: 'ประวัติการใช้งาน',
-                onTap: () {},
-              ),
-              const SizedBox(width: 15),
-              _buildMenuButton(
-                icon: Icons.bookmark,
-                title: 'Bookmark',
-                subtitle: 'รายการที่บันทึกไว้',
-                onTap: () {},
-              ),
+              // 🔴 ลบปุ่ม History และ Bookmark ออกไปแล้ว
             ],
           ),
         ),
