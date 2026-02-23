@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'register_screen.dart'; // อย่าลืม import หน้านี้
 
 class WelcomeScreen extends StatefulWidget {
-  const WelcomeScreen({Key? key}) : super(key: key);
+  const WelcomeScreen({super.key});
 
   @override
   State<WelcomeScreen> createState() => _WelcomeScreenState();
