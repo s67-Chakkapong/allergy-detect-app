@@ -76,11 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // ─────────────────────────────────────────
-  // 🟢 ฟังก์ชันประมวลผล NFC แบบฉลาด (เช็คส่วนผสม)
-  // ─────────────────────────────────────────
   Future<void> _processNfcTag(String nfcProductId) async {
-    // โชว์ Loading ระหว่างดึงข้อมูล
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -88,62 +84,121 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     try {
-      // 1. ดึงข้อมูลสินค้าจาก Firestore
       final productDoc = await FirebaseFirestore.instance.collection('products').doc(nfcProductId).get();
 
       if (!productDoc.exists) {
-        Navigator.pop(context); // ปิด Loading
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ไม่พบข้อมูลสินค้านี้ในระบบ')),
-        );
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ไม่พบข้อมูลสินค้านี้ในระบบ')));
         return;
       }
 
-      List<String> productIngredients = List<String>.from(productDoc.data()?['ingredients'] ?? []);
+      List<String> productIngredients = List<String>.from(
+        productDoc.data()?['ingredients'] ?? productDoc.data()?['allergens'] ?? []
+      );
       String productName = productDoc.data()?['name'] ?? 'สินค้าไม่ทราบชื่อ';
 
-      // 2. ดึงข้อมูลสมาชิกครอบครัว
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      final membersSnapshot = await FirebaseFirestore.instance.collection('users').doc(uid).collection('members').get();
+      if (uid == null) return;
 
-      bool isSafe = true;
+      bool isOverallSafe = true;
       List<String> warningMessages = [];
+      Set<String> allAvoidWords = {}; 
+      
+      // 🟢 ตัวแปรสำหรับคัดแยกคนทานได้/ไม่ได้
+      List<String> safeMembers = [];
+      List<String> unsafeMembers = [];
 
-      // 3. ตรวจสอบส่วนผสมกับอาการแพ้
+      // =========================================================
+      // 1. ตรวจสอบข้อมูลแพ้อาหารของ "ตัวเอง (Main User)"
+      // =========================================================
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        String myName = userDoc.data()?['name'] ?? 'คุณ';
+        String displayName = '$myName (ฉัน)'; // 🟢 เพิ่มตัวแปรใหม่ เติมคำว่า (ฉัน) เข้าไป
+        String myAllergyKey = userDoc.data()?['allergy'] ?? ''; 
+        bool isMySafe = true; // สถานะความปลอดภัยของตัวเอง
+
+        if (myAllergyKey.isNotEmpty) {
+          final dictDoc = await FirebaseFirestore.instance.collection('allergy_name').doc(myAllergyKey).get();
+          if (dictDoc.exists) {
+            List<dynamic> badWords = dictDoc.data()?['avoid_words'] ?? [];
+            for (var word in badWords) allAvoidWords.add(word.toString());
+
+            for (String ingredient in productIngredients) {
+              for (String badWord in badWords) {
+                if (ingredient.toLowerCase().contains(badWord.toLowerCase())) {
+                  isOverallSafe = false;
+                  isMySafe = false;
+                  // 🟢 เปลี่ยนมาใช้ displayName เพื่อให้โชว์คำว่า (ฉัน) ตรงข้อความเตือน
+                  warningMessages.add('- $displayName แพ้ "$ingredient"'); 
+                  break; 
+                }
+              }
+              if (!isMySafe) break; // เจอ 1 อย่างที่แพ้ ก็ถือว่ากินไม่ได้แล้ว
+            }
+          }
+        }
+        
+        // คัดแยกชื่อตัวเอง
+        if (isMySafe) {
+          safeMembers.add(displayName); // 🟢 เปลี่ยนมาใช้ displayName 
+        } else {
+          unsafeMembers.add(displayName); // 🟢 เปลี่ยนมาใช้ displayName 
+        }
+      }
+
+      // =========================================================
+      // 2. ตรวจสอบข้อมูลแพ้อาหารของ "ครอบครัว (Members)"
+      // =========================================================
+      final membersSnapshot = await FirebaseFirestore.instance.collection('users').doc(uid).collection('members').get();
+      
       for (var member in membersSnapshot.docs) {
         String memberName = member.data()['name'] ?? 'สมาชิก';
         String allergyKey = member.data()['allergy'] ?? ''; 
+        bool isMemberSafe = true;
 
         if (allergyKey.isNotEmpty) {
-          final dictDoc = await FirebaseFirestore.instance.collection('allergy_dictionary').doc(allergyKey).get();
-          
+          final dictDoc = await FirebaseFirestore.instance.collection('allergy_name').doc(allergyKey).get();
           if (dictDoc.exists) {
             List<dynamic> badWords = dictDoc.data()?['avoid_words'] ?? [];
+            for (var word in badWords) allAvoidWords.add(word.toString());
             
             for (String ingredient in productIngredients) {
               for (String badWord in badWords) {
                 if (ingredient.toLowerCase().contains(badWord.toLowerCase())) {
-                  isSafe = false;
+                  isOverallSafe = false;
+                  isMemberSafe = false;
                   warningMessages.add('- คุณ "$memberName" แพ้ "$ingredient"');
                   break; 
                 }
               }
+              if (!isMemberSafe) break;
             }
           }
         }
+
+        // คัดแยกชื่อสมาชิกครอบครัว
+        if (isMemberSafe) {
+          safeMembers.add(memberName);
+        } else {
+          unsafeMembers.add(memberName);
+        }
       }
 
-      // 4. ไปหน้า ResultScreen (แสดงหน้าจอ เขียว/แดง)
+      // ส่งผลลัพธ์ไปแสดงหน้า ResultScreen
       if (mounted) {
-        Navigator.pop(context); // ปิด Loading
+        Navigator.pop(context);
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ResultScreen(
-              isSafe: isSafe,
+              isSafe: isOverallSafe,
               productName: productName,
               ingredients: productIngredients,
               warningMessages: warningMessages.toSet().toList(),
+              userAvoidWords: allAvoidWords.toList(),
+              safeMembers: safeMembers,     // 🟢 ส่งรายชื่อคนทานได้ไป
+              unsafeMembers: unsafeMembers, // 🟢 ส่งรายชื่อคนทานไม่ได้ไป
             ),
           ),
         );
@@ -154,6 +209,54 @@ class _HomeScreenState extends State<HomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
       }
     }
+  }
+
+  // ─────────────────────────────────────────
+  // 🟢 สำหรับนักพัฒนา: กล่องกรอกรหัสสินค้าจำลอง NFC
+  // ─────────────────────────────────────────
+  void _showManualEntryDialog() {
+    final TextEditingController idController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: const Row(
+            children: [
+              Icon(Icons.bug_report, color: Colors.orange),
+              SizedBox(width: 10),
+              Text('ทดสอบระบบ (Debug)'),
+            ],
+          ),
+          content: TextField(
+            controller: idController,
+            decoration: const InputDecoration(
+              hintText: 'ใส่รหัสสินค้า เช่น 005',
+              border: OutlineInputBorder(),
+              isDense: true,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('ยกเลิก', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: primaryGreen),
+              onPressed: () {
+                final testId = idController.text.trim();
+                Navigator.pop(context); // ปิดกล่องข้อความ
+                if (testId.isNotEmpty) {
+                  _processNfcTag(testId); // โยนรหัสที่กรอกไปให้ระบบประมวลผลทันที!
+                }
+              },
+              child: const Text('ตรวจสอบ', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // ─────────────────────────────────────────
@@ -288,7 +391,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () => _showNfcDetails(context),
                   child: _buildNfcCard(),
                 ),
-                const SizedBox(height: 35),
+                
+                // 🟢 เพิ่มปุ่ม Debug ตรงนี้ครับ (ใต้การ์ด NFC)
+                Center(
+                  child: TextButton.icon(
+                    onPressed: _showManualEntryDialog,
+                    icon: const Icon(Icons.keyboard, color: Colors.grey, size: 18),
+                    label: const Text(
+                      'ทดสอบกรอกรหัสสินค้าเอง (Debug)',
+                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
+                  ),
+                ),
+                // 🟢 จบส่วนที่เพิ่ม
+
+                const SizedBox(height: 15), // ปรับลดระยะห่างลงนิดหน่อย
                 _buildMenuSection(),
                 const SizedBox(height: 20),
               ],

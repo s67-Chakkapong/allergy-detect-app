@@ -179,8 +179,8 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                 _buildShadowInput(
                   child: Column(
                     children: [
-                      _buildRadioAllergy("Cow's Milk Allergy", "แพ้นมวัว (Cow's Milk Allergy)"),
-                      _buildRadioAllergy("Lactose Intolerance", "แพ้น้ำตาลแลคโตส (Lactose Intolerance)"),
+                      _buildRadioAllergy("cmpa", "แพ้นมวัว (Cow's Milk Allergy)"),
+                      _buildRadioAllergy("lactose_intolerance", "แพ้น้ำตาลแลคโตส (Lactose Intolerance)"),
                     ],
                   ),
                 ),

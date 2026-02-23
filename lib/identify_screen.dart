@@ -454,11 +454,11 @@ class _IdentifyAllergyScreenState extends State<IdentifyAllergyScreen> {
                       child: Column(
                         children: [
                           _buildAllergyOption(
-                            "Cow's Milk Allergy",
+                            "cmpa",
                             "แพ้นมวัว (Cow's Milk Allergy)",
                           ),
                           _buildAllergyOption(
-                            "Lactose Intolerance",
+                            "lactose_intolerance",
                             "แพ้น้ำตาลแลคโตส (Lactose Intolerance)",
                           ),
                         ],
