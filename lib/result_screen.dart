@@ -5,9 +5,10 @@ class ResultScreen extends StatelessWidget {
   final String productName;
   final List<String> ingredients;
   final List<String> warningMessages;
-  final List<String> userAvoidWords; // เรายังต้องใช้ตัวแปรนี้เพื่อเอามาเช็คคำ
+  final List<String> userAvoidWords;
   final List<String> safeMembers;
   final List<String> unsafeMembers;
+  final String imageUrl; // 🟢 1. เพิ่มบรรทัดนี้ (รับค่ารูปลิงก์)
 
   const ResultScreen({
     super.key,
@@ -18,6 +19,7 @@ class ResultScreen extends StatelessWidget {
     required this.userAvoidWords,
     required this.safeMembers,
     required this.unsafeMembers,
+    required this.imageUrl, // 🟢 2. เพิ่มบรรทัดนี้ด้วย
   });
 
   // 🟢 ฟังก์ชันใหม่สำหรับสร้างข้อความส่วนผสมพร้อมไฮไลท์สีแดง
@@ -79,12 +81,22 @@ class ResultScreen extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 20),
+              
+              // 🟢 แก้ไขส่วนแสดงรูปภาพตรงนี้ทั้งหมด
               Center(
-                child: Image.network(
-                  'https://cdn-icons-png.flaticon.com/512/3753/3753238.png',
-                  height: 100,
-                ),
+                child: imageUrl.isNotEmpty
+                    ? Image.network(
+                        imageUrl,
+                        height: 120, 
+                        fit: BoxFit.contain, // จัดให้รูปพอดีไม่เบี้ยว
+                      )
+                    : Image.network(
+                        'https://cdn-icons-png.flaticon.com/128/4388/4388935.png', // รูปขวดนมสำรอง
+                        height: 100,
+                      ),
               ),
+              // 🟢 จบการแก้ไขรูปภาพ
+
               const SizedBox(height: 30),
 
               // การ์ด 1: สถานะความปลอดภัย
