@@ -476,14 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const Spacer(),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(
-            Icons.live_help_outlined,
-            color: Colors.black87,
-            size: 28,
-          ),
-        ),
+        // 🔴 เอาปุ่ม live_help_outlined ออกไปแล้ว เหลือแค่ปุ่ม Logout
         IconButton(
           onPressed: _logout,
           icon: const Icon(Icons.logout, color: Colors.black87, size: 28),
@@ -605,20 +598,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
               ),
-              const SizedBox(width: 15),
-              _buildMenuButton(
-                icon: Icons.history,
-                title: 'History',
-                subtitle: 'ประวัติการใช้งาน',
-                onTap: () {},
-              ),
-              const SizedBox(width: 15),
-              _buildMenuButton(
-                icon: Icons.bookmark,
-                title: 'Bookmark',
-                subtitle: 'รายการที่บันทึกไว้',
-                onTap: () {},
-              ),
+              // 🔴 ลบปุ่ม History และ Bookmark ออกไปแล้ว
             ],
           ),
         ),
