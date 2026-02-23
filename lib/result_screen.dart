@@ -5,9 +5,9 @@ class ResultScreen extends StatelessWidget {
   final String productName;
   final List<String> ingredients;
   final List<String> warningMessages;
-  final List<String> userAvoidWords;
-  final List<String> safeMembers;   // 🟢 เพิ่ม: รายชื่อคนที่ทานได้
-  final List<String> unsafeMembers; // 🟢 เพิ่ม: รายชื่อคนที่ทานไม่ได้
+  final List<String> userAvoidWords; // เรายังต้องใช้ตัวแปรนี้เพื่อเอามาเช็คคำ
+  final List<String> safeMembers;
+  final List<String> unsafeMembers;
 
   const ResultScreen({
     super.key,
@@ -16,9 +16,55 @@ class ResultScreen extends StatelessWidget {
     required this.ingredients,
     required this.warningMessages,
     required this.userAvoidWords,
-    required this.safeMembers,   // 🟢 รับค่าเข้ามา
-    required this.unsafeMembers, // 🟢 รับค่าเข้ามา
+    required this.safeMembers,
+    required this.unsafeMembers,
   });
+
+  // 🟢 ฟังก์ชันใหม่สำหรับสร้างข้อความส่วนผสมพร้อมไฮไลท์สีแดง
+  Widget _buildHighlightedIngredients(List<String> ingredients, List<String> avoidWords) {
+    if (ingredients.isEmpty) {
+      return const Text('ไม่ระบุส่วนผสม', style: TextStyle(fontSize: 14));
+    }
+
+    List<InlineSpan> spans = [];
+    for (int i = 0; i < ingredients.length; i++) {
+      String ingredient = ingredients[i];
+      
+      // เช็คว่าส่วนผสมนี้มีคำต้องห้ามซ่อนอยู่หรือไม่
+      bool isDangerous = avoidWords.any((avoidWord) => 
+          ingredient.toLowerCase().contains(avoidWord.toLowerCase()));
+
+      if (isDangerous) {
+        // 🔴 ถ้าอันตราย: ให้ขีดเส้นใต้สีแดงและทำตัวหนา
+        spans.add(TextSpan(
+          text: ingredient,
+          style: const TextStyle(
+            color: Colors.red,
+            decoration: TextDecoration.underline,
+            decorationColor: Colors.red,
+            decorationThickness: 2.0, // เพิ่มความหนาของเส้น
+            fontWeight: FontWeight.bold,
+          ),
+        ));
+      } else {
+        // ⚪ ถ้าปลอดภัย: แสดงตัวหนังสือปกติ
+        spans.add(TextSpan(text: ingredient));
+      }
+
+      // เติมลูกน้ำ (,) คั่นระหว่างคำ (ยกเว้นคำสุดท้าย)
+      if (i < ingredients.length - 1) {
+        spans.add(const TextSpan(text: ", "));
+      }
+    }
+
+    // ใช้ RichText เพื่อแสดงข้อความที่มีหลายสไตล์ผสมกัน
+    return RichText(
+      text: TextSpan(
+        style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5),
+        children: spans,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,10 +79,9 @@ class ResultScreen extends StatelessWidget {
           child: Column(
             children: [
               const SizedBox(height: 20),
-              // รูปไอคอนสินค้า
               Center(
                 child: Image.network(
-                  'https://cdn-icons-png.flaticon.com/512/3753/3753238.png', 
+                  'https://cdn-icons-png.flaticon.com/512/3753/3753238.png',
                   height: 100,
                 ),
               ),
@@ -44,7 +89,7 @@ class ResultScreen extends StatelessWidget {
 
               // การ์ด 1: สถานะความปลอดภัย
               _buildCard(
-                borderColor: isSafe ? Colors.transparent : Colors.red.withOpacity(0.3),
+                borderColor: isSafe ? Colors.transparent : Colors.red.withOpacity(0.5),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -70,9 +115,9 @@ class ResultScreen extends StatelessWidget {
               ),
               const SizedBox(height: 15),
 
-              // การ์ด 2: ส่วนผสม (เปลี่ยนขอบเป็นสีแดงตอนมีอันตราย)
+              // 🟢 การ์ด 2: ส่วนผสม (ปรับปรุงใหม่)
               _buildCard(
-                borderColor: isSafe ? Colors.transparent : Colors.red.withOpacity(0.3), // 🟢 เปลี่ยนกรอบสีฟ้าเป็นสีแดงแล้ว
+                borderColor: isSafe ? Colors.transparent : Colors.red.withOpacity(0.5),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -86,35 +131,23 @@ class ResultScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     
-                    const Text(
-                      '🚫 สิ่งที่คุณต้องหลีกเลี่ยง:',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.redAccent),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      userAvoidWords.isNotEmpty ? userAvoidWords.join(', ') : 'ไม่มีข้อมูลการแพ้อาหาร',
-                      style: const TextStyle(fontSize: 14),
-                    ),
-                    
-                    const Divider(height: 24, thickness: 1),
+                    // ❌ ลบส่วนที่แสดง "สิ่งที่คุณต้องหลีกเลี่ยง" ออกไปแล้ว
                     
                     Text(
                       '📦 ส่วนผสมในผลิตภัณฑ์ "$productName":',
                       style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      ingredients.isNotEmpty ? ingredients.join(', ') : 'ไม่ระบุส่วนผสม',
-                      style: const TextStyle(fontSize: 14),
-                    ),
+                    const SizedBox(height: 8),
+                    // 🟢 เรียกใช้ฟังก์ชันใหม่เพื่อแสดงส่วนผสมแบบมีไฮไลท์
+                    _buildHighlightedIngredients(ingredients, userAvoidWords),
                   ],
                 ),
               ),
               const SizedBox(height: 15),
 
-              // 🟢 การ์ด 3: สรุปสถานะการทานของแต่ละคน (แทนที่โภชนาการ)
+              // การ์ด 3: สรุปสถานะสมาชิก
               _buildCard(
-                borderColor: isSafe ? Colors.transparent : Colors.red.withOpacity(0.3),
+                borderColor: isSafe ? Colors.transparent : Colors.red.withOpacity(0.5),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -128,7 +161,6 @@ class ResultScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     
-                    // กลุ่มคนที่ทานได้ (ถ้ามี)
                     if (safeMembers.isNotEmpty) ...[
                       Row(
                         children: [
@@ -143,7 +175,6 @@ class ResultScreen extends StatelessWidget {
                       ),
                     ],
 
-                    // กลุ่มคนที่ทานไม่ได้ (ถ้ามี)
                     if (unsafeMembers.isNotEmpty) ...[
                       const Row(
                         children: [
@@ -198,7 +229,7 @@ class ResultScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: borderColor, width: 1.5),
+        border: Border.all(color: borderColor, width: 2.0), // เพิ่มความหนาขอบเล็กน้อย
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
