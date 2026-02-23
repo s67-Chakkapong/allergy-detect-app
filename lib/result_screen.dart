@@ -28,11 +28,12 @@ class ResultScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
-        child: Padding(
+        // 🟢 เปลี่ยนจาก Column ตรงๆ เป็น SingleChildScrollView เพื่อให้เลื่อนหน้าจอได้
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
           child: Column(
             children: [
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               // รูปไอคอนสินค้า
               Center(
                 child: Image.network(
@@ -40,7 +41,7 @@ class ResultScreen extends StatelessWidget {
                   height: 100,
                 ),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 10),
 
               // การ์ด 1: สถานะความปลอดภัย
               _buildCard(
@@ -68,11 +69,11 @@ class ResultScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 8),
 
-              // การ์ด 2: ส่วนผสม (เปลี่ยนขอบเป็นสีแดงตอนมีอันตราย)
+              // การ์ด 2: ส่วนผสม
               _buildCard(
-                borderColor: isSafe ? Colors.transparent : Colors.red.withOpacity(0.3), // 🟢 เปลี่ยนกรอบสีฟ้าเป็นสีแดงแล้ว
+                borderColor: isSafe ? Colors.transparent : Colors.red.withOpacity(0.3),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -84,7 +85,7 @@ class ResultScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     
                     const Text(
                       '🚫 สิ่งที่คุณต้องหลีกเลี่ยง:',
@@ -110,9 +111,9 @@ class ResultScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 15),
+              const SizedBox(height: 8),
 
-              // 🟢 การ์ด 3: สรุปสถานะการทานของแต่ละคน (แทนที่โภชนาการ)
+              // 🟢 การ์ด 3: สรุปสถานะสมาชิก
               _buildCard(
                 borderColor: isSafe ? Colors.transparent : Colors.red.withOpacity(0.3),
                 child: Column(
@@ -126,9 +127,8 @@ class ResultScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     
-                    // กลุ่มคนที่ทานได้ (ถ้ามี)
                     if (safeMembers.isNotEmpty) ...[
                       Row(
                         children: [
@@ -143,7 +143,6 @@ class ResultScreen extends StatelessWidget {
                       ),
                     ],
 
-                    // กลุ่มคนที่ทานไม่ได้ (ถ้ามี)
                     if (unsafeMembers.isNotEmpty) ...[
                       const Row(
                         children: [
@@ -161,7 +160,7 @@ class ResultScreen extends StatelessWidget {
                 ),
               ),
 
-              const Spacer(),
+              const SizedBox(height: 20), // ระยะห่างก่อนถึงปุ่ม
 
               // ปุ่ม OK
               Align(
