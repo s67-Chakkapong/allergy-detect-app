@@ -2,26 +2,42 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-class AddMemberScreen extends StatefulWidget {
-  const AddMemberScreen({super.key});
+class EditMemberScreen extends StatefulWidget {
+  final String memberId; // รหัสสมาชิกที่ต้องการแก้
+  final Map<String, dynamic> memberData; // ข้อมูลเดิมของสมาชิก
+
+  const EditMemberScreen({
+    super.key,
+    required this.memberId,
+    required this.memberData,
+  });
 
   @override
-  State<AddMemberScreen> createState() => _AddMemberScreenState();
+  State<EditMemberScreen> createState() => _EditMemberScreenState();
 }
 
-class _AddMemberScreenState extends State<AddMemberScreen> {
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _ageController = TextEditingController();
-  
+class _EditMemberScreenState extends State<EditMemberScreen> {
+  late TextEditingController _nameController;
+  late TextEditingController _ageController;
+
   String? _selectedGender;
   String? _selectedAllergy;
   bool _isLoading = false;
 
-  // สีอ้างอิงจาก identify_screen.dart
   final Color _backgroundColor = const Color(0xFFF6F4EE);
   final Color _greenTextColor = const Color(0xFF1B4D3E);
   final Color _greyLabelColor = const Color(0xFF8D8D8D);
   final Color _inputBorderColor = const Color(0xFFE0E0E0);
+
+  @override
+  void initState() {
+    super.initState();
+    // นำข้อมูลเดิมมาใส่ในช่องกรอกอัตโนมัติ
+    _nameController = TextEditingController(text: widget.memberData['name'] ?? '');
+    _ageController = TextEditingController(text: widget.memberData['age']?.toString() ?? '');
+    _selectedGender = widget.memberData['gender'];
+    _selectedAllergy = widget.memberData['allergy'];
+  }
 
   @override
   void dispose() {
@@ -30,11 +46,11 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     super.dispose();
   }
 
-  // ฟังก์ชันบันทึกข้อมูลลง Firestore
-  Future<void> _saveMember() async {
-    if (_nameController.text.trim().isEmpty || 
-        _ageController.text.trim().isEmpty || 
-        _selectedGender == null || 
+  // ฟังก์ชันอัปเดตข้อมูลไปยัง Firestore
+  Future<void> _updateMember() async {
+    if (_nameController.text.trim().isEmpty ||
+        _ageController.text.trim().isEmpty ||
+        _selectedGender == null ||
         _selectedAllergy == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบถ้วน')),
@@ -48,24 +64,25 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) throw Exception("User not logged in");
 
-      // บันทึกลง Sub-collection "members" ของ User ปัจจุบัน
+      // 🟢 ใช้คำสั่ง .update() เพื่อแก้ไขข้อมูลเฉพาะ Document นั้นๆ
       await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .collection('members')
-          .add({
+          .doc(widget.memberId)
+          .update({
         'name': _nameController.text.trim(),
         'age': int.tryParse(_ageController.text.trim()) ?? 0,
         'gender': _selectedGender,
         'allergy': _selectedAllergy,
-        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(), // เก็บเวลาที่แก้ไขล่าสุด
       });
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('เพิ่มสมาชิกสำเร็จ!')),
+          const SnackBar(content: Text('แก้ไขข้อมูลสำเร็จ!')),
         );
-        Navigator.pop(context); // กลับไปหน้า Home
+        Navigator.pop(context); // กลับหน้ารายชื่อ
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -85,7 +102,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         elevation: 0,
         iconTheme: IconThemeData(color: _greenTextColor),
         title: Text(
-          'Add member',
+          'Edit member',
           style: TextStyle(color: _greenTextColor, fontWeight: FontWeight.bold),
         ),
       ),
@@ -111,7 +128,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
               children: [
                 Center(
                   child: Text(
-                    "ข้อมูลสมาชิกใหม่",
+                    "แก้ไขข้อมูลสมาชิก",
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -174,7 +191,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _saveMember,
+                    onPressed: _isLoading ? null : _updateMember,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _greenTextColor,
                       shape: RoundedRectangleBorder(
@@ -184,7 +201,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                     child: _isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
-                            "บันทึก (Save)",
+                            "บันทึกการแก้ไข (Update)",
                             style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                   ),
@@ -197,7 +214,7 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
     );
   }
 
-  // --- Widget Helpers (ดัดแปลงจาก IdentifyScreen) ---
+  // --- Widget Helpers ---
   Widget _buildLabel(String text) {
     return Text(text, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _greyLabelColor));
   }

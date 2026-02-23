@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'add_member_screen.dart'; // ดึงหน้าฟอร์มเพิ่มสมาชิกมาใช้
+import 'add_member_screen.dart'; 
+import 'edit_member_screen.dart';
 
 class MemberListScreen extends StatefulWidget {
   const MemberListScreen({super.key});
@@ -13,6 +14,58 @@ class MemberListScreen extends StatefulWidget {
 class _MemberListScreenState extends State<MemberListScreen> {
   final Color _backgroundColor = const Color(0xFFF6F4EE);
   final Color _primaryGreen = const Color(0xFF1B4D3E);
+
+  // ----------------------------------------------------------------
+  // ฟังก์ชันสำหรับแสดงกล่องยืนยันการลบ และสั่งลบข้อมูลจาก Firebase
+  // ----------------------------------------------------------------
+  Future<void> _deleteMember(String uid, String memberId, String memberName) async {
+    // แสดงกล่อง Dialog ยืนยัน
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+          title: const Text('ยืนยันการลบ'),
+          content: Text('คุณต้องการลบข้อมูลของ "$memberName" ใช่หรือไม่?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false), // ยกเลิก
+              child: const Text('ยกเลิก', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true), // ยืนยัน
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('ลบข้อมูล', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    // ถ้ากด "ยืนยัน" ให้เริ่มทำงานลบ
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('members')
+            .doc(memberId) // อ้างอิงถึง ID ของสมาชิกคนนั้นๆ
+            .delete(); // คำสั่งลบจาก Firestore
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ลบสมาชิกเรียบร้อยแล้ว')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('เกิดข้อผิดพลาดในการลบ: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,12 +85,11 @@ class _MemberListScreenState extends State<MemberListScreen> {
       body: uid == null
           ? const Center(child: Text('กรุณาล็อกอินก่อนใช้งาน'))
           : StreamBuilder<QuerySnapshot>(
-              // ดึงข้อมูลจาก Sub-collection "members" แบบเรียลไทม์
               stream: FirebaseFirestore.instance
                   .collection('users')
                   .doc(uid)
                   .collection('members')
-                  .orderBy('createdAt', descending: true) // เรียงจากคนล่าสุดขึ้นก่อน
+                  .orderBy('createdAt', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -70,8 +122,10 @@ class _MemberListScreenState extends State<MemberListScreen> {
                   padding: const EdgeInsets.all(16.0),
                   itemCount: members.length,
                   itemBuilder: (context, index) {
-                    var memberData = members[index].data() as Map<String, dynamic>;
-                    
+                    final memberDoc = members[index]; // ดึง Document ของแต่ละคนมา
+                    final memberData = memberDoc.data() as Map<String, dynamic>;
+                    final memberId = memberDoc.id; // ดึงรหัส ID อัตโนมัติที่ Firebase สร้างให้
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: 16.0),
                       shape: RoundedRectangleBorder(
@@ -110,13 +164,41 @@ class _MemberListScreenState extends State<MemberListScreen> {
                           ),
                         ),
                         isThreeLine: true,
+                        // 🟢 เปลี่ยนจากปุ่มถังขยะอันเดียว เป็น 2 ปุ่มคู่กัน
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // 1. ปุ่มแก้ไข (ดินสอสีน้ำเงิน)
+                            IconButton(
+                              icon: const Icon(Icons.edit_note, color: Colors.blueAccent, size: 30),
+                              onPressed: () {
+                                // กดแล้วส่งข้อมูลเดิมทั้งหมดไปหน้า EditMemberScreen
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => EditMemberScreen(
+                                      memberId: memberId,
+                                      memberData: memberData,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            // 2. ปุ่มลบ (ถังขยะสีแดงอันเดิม)
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: Colors.red, size: 28),
+                              onPressed: () {
+                                _deleteMember(uid, memberId, memberData['name'] ?? 'สมาชิก');
+                              },
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
                 );
               },
             ),
-      // ปุ่มลอยด้านขวาล่างสำหรับกดไปหน้าเพิ่มสมาชิก
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           Navigator.push(
