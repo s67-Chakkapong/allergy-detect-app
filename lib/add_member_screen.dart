@@ -12,7 +12,7 @@ class AddMemberScreen extends StatefulWidget {
 class _AddMemberScreenState extends State<AddMemberScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
-  
+
   String? _selectedGender;
   String? _selectedAllergy;
   bool _isLoading = false;
@@ -32,9 +32,9 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   // ฟังก์ชันบันทึกข้อมูลลง Firestore
   Future<void> _saveMember() async {
-    if (_nameController.text.trim().isEmpty || 
-        _ageController.text.trim().isEmpty || 
-        _selectedGender == null || 
+    if (_nameController.text.trim().isEmpty ||
+        _ageController.text.trim().isEmpty ||
+        _selectedGender == null ||
         _selectedAllergy == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบถ้วน')),
@@ -54,23 +54,23 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
           .doc(uid)
           .collection('members')
           .add({
-        'name': _nameController.text.trim(),
-        'age': int.tryParse(_ageController.text.trim()) ?? 0,
-        'gender': _selectedGender,
-        'allergy': _selectedAllergy,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+            'name': _nameController.text.trim(),
+            'age': int.tryParse(_ageController.text.trim()) ?? 0,
+            'gender': _selectedGender,
+            'allergy': _selectedAllergy,
+            'createdAt': FieldValue.serverTimestamp(),
+          });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('เพิ่มสมาชิกสำเร็จ!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('เพิ่มสมาชิกสำเร็จ!')));
         Navigator.pop(context); // กลับไปหน้า Home
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -162,8 +162,14 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                 _buildShadowInput(
                   child: Column(
                     children: [
-                      _buildRadioAllergy("Cow's Milk Allergy", "แพ้นมวัว (Cow's Milk Allergy)"),
-                      _buildRadioAllergy("Lactose Intolerance", "แพ้น้ำตาลแลคโตส (Lactose Intolerance)"),
+                      _buildRadioAllergy(
+                        "cmpa",
+                        "แพ้นมวัว (Cow's Milk Allergy)",
+                      ),
+                      _buildRadioAllergy(
+                        "lactose_intolerance",
+                        "แพ้น้ำตาลแลคโตส (Lactose Intolerance)",
+                      ),
                     ],
                   ),
                 ),
@@ -185,7 +191,11 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
                             "บันทึก (Save)",
-                            style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                   ),
                 ),
@@ -199,7 +209,14 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
 
   // --- Widget Helpers (ดัดแปลงจาก IdentifyScreen) ---
   Widget _buildLabel(String text) {
-    return Text(text, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _greyLabelColor));
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: _greyLabelColor,
+      ),
+    );
   }
 
   Widget _buildShadowInput({required Widget child}) {
@@ -209,7 +226,11 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: _inputBorderColor.withOpacity(0.5)),
         boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: child,
@@ -252,7 +273,12 @@ class _AddMemberScreenState extends State<AddMemberScreen> {
               activeColor: _greenTextColor,
               onChanged: (val) => setState(() => _selectedAllergy = val),
             ),
-            Expanded(child: Text(label, style: TextStyle(color: Colors.grey[700], fontSize: 13))),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(color: Colors.grey[700], fontSize: 13),
+              ),
+            ),
           ],
         ),
       ),

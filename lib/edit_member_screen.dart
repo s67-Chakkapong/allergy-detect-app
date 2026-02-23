@@ -33,8 +33,12 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
   void initState() {
     super.initState();
     // นำข้อมูลเดิมมาใส่ในช่องกรอกอัตโนมัติ
-    _nameController = TextEditingController(text: widget.memberData['name'] ?? '');
-    _ageController = TextEditingController(text: widget.memberData['age']?.toString() ?? '');
+    _nameController = TextEditingController(
+      text: widget.memberData['name'] ?? '',
+    );
+    _ageController = TextEditingController(
+      text: widget.memberData['age']?.toString() ?? '',
+    );
     _selectedGender = widget.memberData['gender'];
     _selectedAllergy = widget.memberData['allergy'];
   }
@@ -71,23 +75,23 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
           .collection('members')
           .doc(widget.memberId)
           .update({
-        'name': _nameController.text.trim(),
-        'age': int.tryParse(_ageController.text.trim()) ?? 0,
-        'gender': _selectedGender,
-        'allergy': _selectedAllergy,
-        'updatedAt': FieldValue.serverTimestamp(), // เก็บเวลาที่แก้ไขล่าสุด
-      });
+            'name': _nameController.text.trim(),
+            'age': int.tryParse(_ageController.text.trim()) ?? 0,
+            'gender': _selectedGender,
+            'allergy': _selectedAllergy,
+            'updatedAt': FieldValue.serverTimestamp(), // เก็บเวลาที่แก้ไขล่าสุด
+          });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('แก้ไขข้อมูลสำเร็จ!')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('แก้ไขข้อมูลสำเร็จ!')));
         Navigator.pop(context); // กลับหน้ารายชื่อ
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('เกิดข้อผิดพลาด: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -179,8 +183,14 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                 _buildShadowInput(
                   child: Column(
                     children: [
-                      _buildRadioAllergy("Cow's Milk Allergy", "แพ้นมวัว (Cow's Milk Allergy)"),
-                      _buildRadioAllergy("Lactose Intolerance", "แพ้น้ำตาลแลคโตส (Lactose Intolerance)"),
+                      _buildRadioAllergy(
+                        "cmpa",
+                        "แพ้นมวัว (Cow's Milk Allergy)",
+                      ),
+                      _buildRadioAllergy(
+                        "lactose_intolerance",
+                        "แพ้น้ำตาลแลคโตส (Lactose Intolerance)",
+                      ),
                     ],
                   ),
                 ),
@@ -202,7 +212,11 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
                         ? const CircularProgressIndicator(color: Colors.white)
                         : const Text(
                             "บันทึกการแก้ไข (Update)",
-                            style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold),
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                   ),
                 ),
@@ -216,7 +230,14 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
 
   // --- Widget Helpers ---
   Widget _buildLabel(String text) {
-    return Text(text, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: _greyLabelColor));
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: _greyLabelColor,
+      ),
+    );
   }
 
   Widget _buildShadowInput({required Widget child}) {
@@ -226,7 +247,11 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
         borderRadius: BorderRadius.circular(15),
         border: Border.all(color: _inputBorderColor.withOpacity(0.5)),
         boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: child,
@@ -269,7 +294,12 @@ class _EditMemberScreenState extends State<EditMemberScreen> {
               activeColor: _greenTextColor,
               onChanged: (val) => setState(() => _selectedAllergy = val),
             ),
-            Expanded(child: Text(label, style: TextStyle(color: Colors.grey[700], fontSize: 13))),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(color: Colors.grey[700], fontSize: 13),
+              ),
+            ),
           ],
         ),
       ),

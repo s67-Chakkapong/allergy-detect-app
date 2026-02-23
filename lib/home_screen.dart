@@ -84,12 +84,17 @@ class _HomeScreenState extends State<HomeScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator(color: primaryGreen)),
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: primaryGreen)),
     );
 
     try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
       // 1. ดึงข้อมูลสินค้าจาก Firestore
-      final productDoc = await FirebaseFirestore.instance.collection('products').doc(nfcProductId).get();
+      final productDoc = await FirebaseFirestore.instance
+          .collection('products')
+          .doc(nfcProductId)
+          .get();
 
       if (!productDoc.exists) {
         Navigator.pop(context); // ปิด Loading
@@ -99,43 +104,96 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
-      List<String> productIngredients = List<String>.from(productDoc.data()?['ingredients'] ?? []);
+      List<String> productIngredients = List<String>.from(
+        productDoc.data()?['ingredients'] ?? [],
+      );
       String productName = productDoc.data()?['name'] ?? 'สินค้าไม่ทราบชื่อ';
 
-      // 2. ดึงข้อมูลสมาชิกครอบครัว
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      final membersSnapshot = await FirebaseFirestore.instance.collection('users').doc(uid).collection('members').get();
-
-      bool isSafe = true;
+      bool isSafe = true; // highlight
       List<String> warningMessages = [];
 
-      // 3. ตรวจสอบส่วนผสมกับอาการแพ้
-      for (var member in membersSnapshot.docs) {
-        String memberName = member.data()['name'] ?? 'สมาชิก';
-        String allergyKey = member.data()['allergy'] ?? ''; 
+      // ─────────────────────────────────────────
+      // 2. Build list of ALL people to check
+      //    (main user + members)
+      // ─────────────────────────────────────────
+      List<Map<String, String>> peopleToCheck = [];
 
-        if (allergyKey.isNotEmpty) {
-          final dictDoc = await FirebaseFirestore.instance.collection('allergy_dictionary').doc(allergyKey).get();
-          
-          if (dictDoc.exists) {
-            List<dynamic> badWords = dictDoc.data()?['avoid_words'] ?? [];
-            
-            for (String ingredient in productIngredients) {
-              for (String badWord in badWords) {
-                if (ingredient.toLowerCase().contains(badWord.toLowerCase())) {
-                  isSafe = false;
-                  warningMessages.add('- คุณ "$memberName" แพ้ "$ingredient"');
-                  break; 
-                }
-              }
+      // ✅ Add main user
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+      if (userDoc.exists) {
+        final userData = userDoc.data()!;
+        peopleToCheck.add({
+          'name': userData['name'] ?? 'คุณ',
+          'allergy': userData['allergy'] ?? '',
+        });
+      }
+
+      // ✅ Add members
+      final membersSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('members')
+          .get();
+
+      for (var member in membersSnapshot.docs) {
+        peopleToCheck.add({
+          'name': member.data()['name'] ?? 'สมาชิก',
+          'allergy': member.data()['allergy'] ?? '',
+        });
+      }
+
+      debugPrint('👥 People to check: $peopleToCheck');
+
+      // ─────────────────────────────────────────
+      // 3. Check each person's allergy
+      // ─────────────────────────────────────────
+      for (var person in peopleToCheck) {
+        String personName = person['name']!;
+        String allergyKey = person['allergy']!;
+
+        if (allergyKey.isEmpty) continue;
+
+        debugPrint('🔍 Checking $personName with allergy: $allergyKey');
+
+        final dictDoc = await FirebaseFirestore.instance
+            .collection('allergy_name')
+            .doc(allergyKey)
+            .get();
+
+        if (!dictDoc.exists) {
+          debugPrint('❌ No dictionary found for: $allergyKey');
+          continue;
+        }
+
+        List<String> badWords = List<String>.from(
+          dictDoc.data()?['avoid_words'] ?? [],
+        );
+
+        debugPrint('⚠️ Bad words for $allergyKey: $badWords');
+
+        for (String ingredient in productIngredients) {
+          for (String badWord in badWords) {
+            debugPrint(
+              'Comparing: "${ingredient.toLowerCase()}" contains "${badWord.toLowerCase()}"?',
+            );
+            if (ingredient.toLowerCase().contains(badWord.toLowerCase())) {
+              isSafe = false;
+              warningMessages.add('- คุณ "$personName" แพ้ "$ingredient"');
+              debugPrint('🚨 Match found: $ingredient for $personName');
             }
           }
         }
       }
 
+      debugPrint('✅ isSafe: $isSafe');
+      debugPrint('⚠️ Warnings: $warningMessages');
+
       // 4. ไปหน้า ResultScreen (แสดงหน้าจอ เขียว/แดง)
       if (mounted) {
-        Navigator.pop(context); // ปิด Loading
+        Navigator.pop(context);
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -151,7 +209,10 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       if (mounted) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('เกิดข้อผิดพลาด: $e')));
+        debugPrint('Error: $e');
       }
     }
   }
@@ -173,7 +234,7 @@ class _HomeScreenState extends State<HomeScreen> {
           var ndef = Ndef.from(tag);
           if (ndef != null && ndef.cachedMessage != null) {
             var record = ndef.cachedMessage!.records.first;
-            
+
             // 🟢 อ่านข้อมูลเป็นรหัสสินค้าแทน
             String nfcPayload = utf8.decode(record.payload.sublist(3));
             String productId = nfcPayload.trim();
@@ -181,8 +242,13 @@ class _HomeScreenState extends State<HomeScreen> {
             await NfcManager.instance.stopSession(); // ปิดระบบอ่านหลังได้ข้อมูล
 
             if (mounted) {
-              Navigator.of(context, rootNavigator: true).pop(); // ปิดหน้าต่าง Popup เบลอๆ
-              await Future.delayed(const Duration(milliseconds: 300)); // หน่วงเวลาเล็กน้อยให้ปิดสนิท
+              Navigator.of(
+                context,
+                rootNavigator: true,
+              ).pop(); // ปิดหน้าต่าง Popup เบลอๆ
+              await Future.delayed(
+                const Duration(milliseconds: 300),
+              ); // หน่วงเวลาเล็กน้อยให้ปิดสนิท
 
               // 🟢 ส่งรหัสไปประมวลผลต่อ
               if (mounted) {
