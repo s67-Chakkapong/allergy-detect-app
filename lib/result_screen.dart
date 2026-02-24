@@ -37,7 +37,7 @@ class ResultScreen extends StatelessWidget {
               // รูปไอคอนสินค้า
               Center(
                 child: Image.network(
-                  'https://cdn-icons-png.flaticon.com/512/3753/3753238.png', 
+                  'https://cdn-icons-png.flaticon.com/128/3528/3528201.png', 
                   height: 100,
                 ),
               ),
